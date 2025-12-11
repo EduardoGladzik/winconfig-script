@@ -9,9 +9,9 @@ The script is designed to be launched from a pen-drive.
 Functionalities
 =============================
 
-Report: generates a report with relevant information about the computer, such as name and printer settings.
-Winconfig: configure settings like neetwork sharing and sleep time.
-Apps: Install apps via Chocolatey package manager.
+- Report: generates a report with relevant information about the computer, such as name and printer settings.
+- Winconfig: configure settings like neetwork sharing and sleep time.
+- Apps: Install apps via Chocolatey package manager.
 
 
 Broken

@@ -49,11 +49,11 @@ function Set-BestPerformance {
 
 function Set-AdminUser($password) {
     Write-Host "Habilitando usuário 'Administrador'..."
-    net user Administrator $password
+    net user Administrador $password
     if ($LASTEXITCODE -ne 0) { 
         throw "Falha ao definir a senha. Verifique a complexidade. (Código: $LASTEXITCODE)"
     }
-    net user Administrator /active:yes
+    net user Administrador /active:yes
     if ($LASTEXITCODE -ne 0) { 
         throw "Falha ao ATIVAR o usuário Administrador. (Código: $LASTEXITCODE)"
     }
@@ -123,46 +123,6 @@ function Set-AdvancedSharing {
     net user Convidado /active:no 2>$null
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "everyoneincludesanonymous" -Value 0 -Type DWord -Force
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Name "restrictnullsessaccess" -Value 1 -Type DWord -Force
-}
-
-function Install-ChocoPrograms {
-    Write-Host "Iniciando Gerenciador de Pacotes Chocolatey..."
-
-    # LOCATE PACKAGES.CONGI
-    $scriptDir = $PSScriptRoot
-	$rootFolder = Split-Path -Parent $scriptDir
-    $configFile = Join-Path $rootFolder "chocolatey\packages.config"
-
-    if (-not (Test-Path $configFile)) {
-        throw "Arquivo 'packages.config' não encontrado na pasta: $scriptPath. A instalação será abortada."
-    }
-    Write-Host "  > Arquivo de configuração encontrado: $configFile"
-
-    # INSTALL CHOCOLATEY
-    if (!(Test-Path "$env:ProgramData\chocolatey\bin\choco.exe")) {
-        Write-Host "  > Chocolatey não encontrado. Instalando..."
-        try {
-            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-            Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')) | Out-Null
-            
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        }
-        catch { throw "Falha ao baixar Chocolatey. Verifique o acesso a internet!" }
-    }
-
-    $chocoExe = "$env:ProgramData\chocolatey\bin\choco.exe"
-    if (!(Test-Path $chocoExe)) { throw "Erro Crítico: Executável do Chocolatey não encontrado." }
-
-    # EXECUTE INTALATION WITH PACKAGES.CONFIG
-    Write-Host "  > Instalando aplicativos definidos em packages.config..."
-    
-    & $chocoExe install $configFile -y --limit-output
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  > Instalação de pacotes concluída!"
-    } else {
-        Write-Warning "  > Chocolatey finalizou com avisos."
-    }
 }
 
 function Set-SleepTime {
@@ -258,13 +218,6 @@ $text_ComputerName = New-Object System.Windows.Forms.TextBox
 $text_ComputerName.Location = New-Object System.Drawing.Point(230, 310); $text_ComputerName.Size = New-Object System.Drawing.Size(240, 20)
 $gui.Controls.Add($text_ComputerName)
 
-$check_InstallApps = New-Object System.Windows.Forms.CheckBox
-$check_InstallApps.Text = "Instalar Apps Básicos (Chrome, Adobe, Java...)"
-$check_InstallApps.Location = New-Object System.Drawing.Point(20, 350)
-$check_InstallApps.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_InstallApps)
-
-
 $executeButton = New-Object System.Windows.Forms.Button
 $executeButton.Text = "APLICAR CONFIGURAÇÕES"
 $executeButton.Location = New-Object System.Drawing.Point(100, 420)
@@ -300,10 +253,6 @@ $executeButton.Add_Click({
     }
     if ($check_SleepTime.Checked) { Invoke-ConfigStep "Ajustar Energia" { Set-SleepTime } }
     if ($check_AdminUser.Checked -and $text_AdminPass.Text -ne "") { Invoke-ConfigStep "Habilitar Admin" { Set-AdminUser $text_AdminPass.Text } }
-    
-    if ($check_InstallApps.Checked) { 
-        Invoke-ConfigStep "Instalar Programas (Chocolatey)" { Install-ChocoPrograms }
-    }
 
     if ($check_DisableUAC.Checked) { Invoke-ConfigStep "Desativar UAC" { Set-DisableUAC; $Global:restartNeeded = $true } }
     if ($check_ComputerName.Checked -and $text_ComputerName.Text -ne "") { Invoke-ConfigStep "Alterar Nome do PC" { Set-ComputerName $text_ComputerName.Text; $Global:restartNeeded = $true } }
