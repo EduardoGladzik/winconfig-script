@@ -147,7 +147,7 @@ function Install-ChocoPrograms {
             
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
         }
-        catch { throw "Falha ao baixar Chocolatey. Verifique o acesos a internet!" }
+        catch { throw "Falha ao baixar Chocolatey. Verifique o acesso a internet!" }
     }
 
     $chocoExe = "$env:ProgramData\chocolatey\bin\choco.exe"
