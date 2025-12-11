@@ -1,4 +1,4 @@
-PowerShell script designed to automate tasks of my daily-basis work routine.
+PowerShell script designed to automate tasks of my daily work routine.
 
 The script is designed to be launched from a pen-drive. 
 
