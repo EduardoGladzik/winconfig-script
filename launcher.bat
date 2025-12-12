@@ -19,12 +19,12 @@ echo [PASSO 1] Gerando Relatorios...
 powershell.exe -ExecutionPolicy Bypass -File "%WORK_DIR%scripts\report.ps1"
 
 echo.
-echo [PASSO 2] Iniciando GUI de Configuracao...
-start /wait powershell.exe -ExecutionPolicy Bypass -File "%WORK_DIR%scripts\winconfig.ps1"
+echo [PASSO 2] Iniciando Instalação dos aplicativos padrão...
+start /wait powershell.exe -ExecutionPolicy Bypass -File "%WORK_DIR%scripts\apps.ps1"
 
 echo.
-echo [PASSO 3] Iniciando Instalação dos aplicativos padrão...
-start /wait powershell.exe -ExecutionPolicy Bypass -File "%WORK_DIR%scripts\apps.ps1"
+echo [PASSO 3] Iniciando GUI de Configuracao...
+start /wait powershell.exe -ExecutionPolicy Bypass -File "%WORK_DIR%scripts\winconfig.ps1"
 
 echo.
 echo Processo finalizado com sucesso!
