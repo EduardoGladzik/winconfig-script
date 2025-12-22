@@ -2,7 +2,7 @@ Description
 =============================
 PowerShell script designed to automate tasks of my daily work routine.
 
-Functionalities
+Features
 =============================
 - Report: generates a report with relevant information about the computer, such as name and printer settings.
 - Apps: Install apps via Windows package manager (Winget).
