@@ -87,9 +87,6 @@ function Get-SystemReport {
     Write-Host "Relatório salvo com sucesso em:" -ForegroundColor Green
     Write-Host "$reportFile" -ForegroundColor Yellow
     Write-Host ""
-    
-    # opens the report automaticaly
-    Invoke-Item $reportFile
 }
 
 Get-SystemReport
