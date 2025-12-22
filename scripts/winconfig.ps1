@@ -16,35 +16,38 @@ function Set-EnableRDP {
     Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0 -Type DWord -Force
 
     Write-Host "  > Abrindo portas no Firewall..."
-    netsh advfirewall firewall set rule group="Ambiente de Trabalho Remoto" new enable=Yes | Out-Null
-    netsh advfirewall firewall set rule group="Remote Desktop" new enable=Yes | Out-Null
-    netsh advfirewall firewall add rule name="RDP-Manual-TCP-3389" dir=in action=allow protocol=TCP localport=3389 | Out-Null
+    netsh advfirewall firewall set rule group="Ambiente de Trabalho Remoto" new enable=Yes
+    netsh advfirewall firewall set rule group="Remote Desktop" new enable=Yes
+    netsh advfirewall firewall add rule name="RDP-Manual-TCP-3389" dir=in action=allow protocol=TCP localport=3389
 }
 
 function Set-BestPerformance {
-    Write-Host "Configurando Visual: Personalizado..."
+    Write-Host "Alterando configurações de desempenho..."
 
     $explorerPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
     $desktopPath = "HKCU:\Control Panel\Desktop"
     $advancedPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-
+	
     Set-ItemProperty -Path $explorerPath -Name "VisualFXSetting" -Value 3 -Type DWord -Force
 
-    $mask = [byte[]](0x90, 0x12, 0x03, 0x80, 0x10, 0x00, 0x00, 0x00)
+    $mask = [byte[]](0x90, 0x12, 0x01, 0x80, 0x10, 0x00, 0x00, 0x00)
     Set-ItemProperty -Path $desktopPath -Name "UserPreferencesMask" -Value $mask -Type Binary -Force
-
-    Write-Host "  > Ativando conteúdo da gui ao arrastar..."
-    Set-ItemProperty -Path $desktopPath -Name "DragFullWindows" -Value 1 -Type String -Force
-
-    Write-Host "  > Ativando miniaturas..."
-    Set-ItemProperty -Path $advancedPath -Name "IconsOnly" -Value 0 -Type DWord -Force
-
+	
+	# Disable
+	Set-ItemProperty -Path $desktopPath -Name "MinAnimate" -Value 0 -Type String -Force
+	Set-ItemProperty -Path $advancedPath -Name "DisablePreviewDesktop" -Value 1 -Type DWord -Force
     Set-ItemProperty -Path $advancedPath -Name "ListviewShadow" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $advancedPath -Name "TaskbarAnimations" -Value 0 -Type DWord -Force
+    Set-ItemProperty -Path $advancedPath -Name "TaskbarAnimations" -Value 0 -Type DWord
+	
+	# Enable
+    Set-ItemProperty -Path $desktopPath -Name "DragFullWindows" -Value 1 -Type String -Force
+    Set-ItemProperty -Path $advancedPath -Name "IconsOnly" -Value 0 -Type DWord -Force
+	Set-ItemProperty -Path $desktopPath -Name "FontSmoothing" -Value 2 -Type String -Force
+
 
     Write-Host "  > Reiniciando Windows Explorer..."
     Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 3
 }
 
 function Set-AdminUser($password) {
@@ -65,12 +68,12 @@ function Set-AutoUpdates {
     try {
         $ServiceManager = New-Object -ComObject Microsoft.Update.ServiceManager
         $ServiceManager.ClientApplicationID = "PowerShellScript"
-        $ServiceManager.AddService2("7971f918-a847-4430-9279-4a52d1efe18d", 7, "") | Out-Null
+        $ServiceManager.AddService2("7971f918-a847-4430-9279-4a52d1efe18d", 7, "")
     } catch { Write-Host "    (Serviço já pode estar ativo)" }
 
     Write-Host "  > Ativando 'Inovação Contínua'..."
     $UXKey = "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"
-    if (!(Test-Path $UXKey)) { New-Item -Path $UXKey -Force | Out-Null }
+    if (!(Test-Path $UXKey)) { New-Item -Path $UXKey -Force }
     Set-ItemProperty -Path $UXKey -Name "IsContinuousInnovationOptedIn" -Value 1 -Type DWord -Force
 
     Write-Host "  > Iniciando serviços..."
@@ -86,12 +89,14 @@ function Set-AutoUpdates {
 
 function Enable-TelnetAndSMB {
     Write-Host "Habilitando Cliente Telnet..."
-    DISM /Online /Enable-Feature /FeatureName:TelnetClient /NoRestart | Out-Null
-    
+    Enable-WindowsOptionalFeature -Online -FeatureName "TelnetClient" -All -NoRestart
+
     Write-Host "Configurando SMB 1.0 (Apenas Cliente)..."
-    DISM /Online /Enable-Feature /FeatureName:SMB1Protocol-Client /NoRestart | Out-Null
-    DISM /Online /Disable-Feature /FeatureName:SMB1Protocol-Server /NoRestart | Out-Null
-    DISM /Online /Disable-Feature /FeatureName:SMB1Protocol-Deprecation /NoRestart | Out-Null
+    # O comando nativo lida automaticamente com dependências se usar o -All
+    Enable-WindowsOptionalFeature -Online -FeatureName "SMB1Protocol-Client" -All -NoRestart
+	Start-Sleep -Seconds 5
+	Disable-WindowsOptionalFeature -Online -FeatureName "SMB1Protocol-Server" -NoRestart
+	Disable-WindowsOptionalFeature -Online -FeatureName "SMB1Protocol-Deprecation" -NoRestart
 }
 
 function Set-NetworkSharing {
@@ -99,14 +104,14 @@ function Set-NetworkSharing {
     $gruposFile = @("Compartilhamento de Arquivo e Impressora", "Partilha de Ficheiros e Impressoras", "File and Printer Sharing")
     $gruposDiscovery = @("Descoberta de Rede", "Deteção de Rede", "Network Discovery")
 
-    foreach ($nome in $gruposFile) { netsh advfirewall firewall set rule group="$nome" new enable=Yes | Out-Null }
-    foreach ($nome in $gruposDiscovery) { netsh advfirewall firewall set rule group="$nome" new enable=Yes | Out-Null }
+    foreach ($nome in $gruposFile) { netsh advfirewall firewall set rule group="$nome" new enable=Yes }
+    foreach ($nome in $gruposDiscovery) { netsh advfirewall firewall set rule group="$nome" new enable=Yes }
 
     # Fallback
-    netsh advfirewall firewall add rule name="SMB-Manual-TCP-445" dir=in action=allow protocol=TCP localport=445 | Out-Null
-    netsh advfirewall firewall add rule name="NetBIOS-Manual-TCP-139" dir=in action=allow protocol=TCP localport=139 | Out-Null
-    netsh advfirewall firewall add rule name="NetBIOS-Manual-UDP" dir=in action=allow protocol=UDP localport=137,138 | Out-Null
-    netsh advfirewall firewall add rule name="ICMP-Ping-Manual" dir=in action=allow protocol=ICMPv4 | Out-Null
+    netsh advfirewall firewall add rule name="SMB-Manual-TCP-445" dir=in action=allow protocol=TCP localport=445
+    netsh advfirewall firewall add rule name="NetBIOS-Manual-TCP-139" dir=in action=allow protocol=TCP localport=139
+    netsh advfirewall firewall add rule name="NetBIOS-Manual-UDP" dir=in action=allow protocol=UDP localport=137,138
+    netsh advfirewall firewall add rule name="ICMP-Ping-Manual" dir=in action=allow protocol=ICMPv4
 }
 
 function Set-AdvancedSharing {
@@ -234,7 +239,7 @@ function Invoke-ConfigStep {
     param ([string]$Description, [scriptblock]$Action)
     Write-Host "---`nINICIANDO: $Description"
     try { & $Action -ErrorAction Stop; Write-Host "SUCESSO: $Description" }
-    catch { $msg = "FALHA: $Description. $($_.Exception.Message)"; Write-Warning $msg; $Global:listaDeErros.Add($msg) | Out-Null }
+    catch { $msg = "FALHA: $Description. $($_.Exception.Message)"; Write-Warning $msg; $Global:listaDeErros.Add($msg) }
 }
 
 $executeButton.Add_Click({
