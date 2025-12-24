@@ -1,13 +1,15 @@
+﻿Add-Type -AssemblyName System.Windows.Forms
+
 # =================================================================
 # Windows functions
 # =================================================================
 
-function Set-DisableUAC {
+function Disable-UAC {
     Write-Host "Desativando o UAC..."
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "EnableLUA" -Value 0 -Type DWord -Force
 }
 
-function Set-EnableRDP {
+function Enable-RDP {
     Write-Host "Configurando Área de Trabalho Remota (RDP)..."
     Write-Host "  > Ativando conexões RDP..."
     Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0 -Type DWord -Force
@@ -50,12 +52,14 @@ function Set-BestPerformance {
     Start-Sleep -Seconds 3
 }
 
-function Set-AdminUser($password) {
+function Enable-AdminUser() {
     Write-Host "Habilitando usuário 'Administrador'..."
+	$scriptDir = $PSScriptRoot
+	$rootFolder = Split-Path -Parent $scriptDir
+    $configFile = Join-Path $rootFolder "password\password.txt"
+	$password = (Get-Content -Path $configFile -Raw).Trim()
     net user Administrador $password
-    if ($LASTEXITCODE -ne 0) { 
-        throw "Falha ao definir a senha. Verifique a complexidade. (Código: $LASTEXITCODE)"
-    }
+
     net user Administrador /active:yes
     if ($LASTEXITCODE -ne 0) { 
         throw "Falha ao ATIVAR o usuário Administrador. (Código: $LASTEXITCODE)"
@@ -71,17 +75,14 @@ function Set-AutoUpdates {
         $ServiceManager.AddService2("7971f918-a847-4430-9279-4a52d1efe18d", 7, "")
     } catch { Write-Host "    (Serviço já pode estar ativo)" }
 
-    Write-Host "  > Ativando 'Inovação Contínua'..."
     $UXKey = "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"
     if (!(Test-Path $UXKey)) { New-Item -Path $UXKey -Force }
     Set-ItemProperty -Path $UXKey -Name "IsContinuousInnovationOptedIn" -Value 1 -Type DWord -Force
 
-    Write-Host "  > Iniciando serviços..."
     sc.exe config wuauserv start= auto; sc.exe start wuauserv 2>$null
     sc.exe config bits start= auto; sc.exe start bits 2>$null
     sc.exe config UsoSvc start= auto; sc.exe start UsoSvc 2>$null
 
-    Write-Host "  > Limpando políticas restritivas..."
     Remove-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Recurse -Force -ErrorAction SilentlyContinue
 
     Start-Process -FilePath "UsoClient.exe" -ArgumentList "StartScan" -ErrorAction SilentlyContinue
@@ -100,7 +101,7 @@ function Enable-TelnetAndSMB {
 }
 
 function Set-NetworkSharing {
-    Write-Host "Configurando Firewall para Compartilhamento..."
+    Write-Host "Ajustando configurações de compartilhamento de rede..."
     $gruposFile = @("Compartilhamento de Arquivo e Impressora", "Partilha de Ficheiros e Impressoras", "File and Printer Sharing")
     $gruposDiscovery = @("Descoberta de Rede", "Deteção de Rede", "Network Discovery")
 
@@ -115,7 +116,7 @@ function Set-NetworkSharing {
 }
 
 function Set-AdvancedSharing {
-    Write-Host "Configurando Opções Avançadas (AMBOS ATIVADOS)..."
+    Write-Host "Ajustando configurações de compartilhamento avançadas..."
     Write-Host "  > Ativando compartilhamento da pasta Pública..."
     $publicPath = "$env:SystemDrive\Users\Public"
     icacls $publicPath /grant "Todos:(OI)(CI)F" /T /Q 2>$null
@@ -131,7 +132,7 @@ function Set-AdvancedSharing {
 }
 
 function Set-SleepTime {
-    Write-Host "Ajustando energia..."
+    Write-Host "Ajustando configurações de economia de energia..."
     powercfg /change standby-timeout-ac 60
     powercfg /change standby-timeout-dc 60
     powercfg /change monitor-timeout-ac 60
@@ -140,96 +141,29 @@ function Set-SleepTime {
     powercfg /change hibernate-timeout-dc 0
 }
 
-function Set-ComputerName($novoNome) {
-    Write-Host "Alterando nome do PC para $novoNome."
-    Rename-Computer -NewName $novoNome -Force
+function Set-ComputerName {
+	$scriptDir = $PSScriptRoot
+	$rootFolder = Split-Path -Parent $scriptDir
+	$reportPath = Join-Path $rootFolder "relatorio.txt"
+	$content = Get-Content -Path $reportPath
+	$targetLine = $content | Where-Object { $_ -match "Nome do PC:"}
+	
+	if($targetLine) {
+		$parts = $targetLine -split ":"
+	}
+	
+	$newName = $parts[1].Trim()
+    Write-Host "Alterando nome do PC..."
+    Rename-Computer -NewName $newName -Force
 }
 
-function New-RestorePoint {
+function Create-RestorePoint {
     Write-Host "Criando Ponto de Restauração..."
     try {
         Enable-ComputerRestore -Drive "C:" -ErrorAction Stop
         Checkpoint-Computer -Description "ScriptConfig" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
     } catch { Write-Warning "Falha no Ponto de Restauração. Continuando..." }
 }
-
-# =================================================================
-# GUI
-# =================================================================
-
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-
-$gui = New-Object System.Windows.Forms.Form
-$gui.Text = "Ferramenta de Configuração (Completa)"
-$gui.Size = New-Object System.Drawing.Size(500, 550)
-$gui.StartPosition = "CenterScreen"
-
-$check_RestorePoint = New-Object System.Windows.Forms.CheckBox
-$check_RestorePoint.Text = "Criar Ponto de Restauração"
-$check_RestorePoint.Location = New-Object System.Drawing.Point(20, 20); $check_RestorePoint.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_RestorePoint)
-
-$check_RDP = New-Object System.Windows.Forms.CheckBox
-$check_RDP.Text = "Habilitar RDP (Sem NLA + Firewall)"
-$check_RDP.Location = New-Object System.Drawing.Point(20, 50); $check_RDP.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_RDP)
-
-$check_Performance = New-Object System.Windows.Forms.CheckBox
-$check_Performance.Text = "Desempenho (C/ Miniaturas e Arrastar)"
-$check_Performance.Location = New-Object System.Drawing.Point(20, 80); $check_Performance.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_Performance)
-
-$check_AutoUpdates = New-Object System.Windows.Forms.CheckBox
-$check_AutoUpdates.Text = "Configurar Updates (Oficial + MS Products)"
-$check_AutoUpdates.Location = New-Object System.Drawing.Point(20, 110); $check_AutoUpdates.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_AutoUpdates)
-
-$check_TelnetSMB = New-Object System.Windows.Forms.CheckBox
-$check_TelnetSMB.Text = "Habilitar Telnet e SMBv1 (Cliente)"
-$check_TelnetSMB.Location = New-Object System.Drawing.Point(20, 140); $check_TelnetSMB.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_TelnetSMB)
-
-$check_NetSharing = New-Object System.Windows.Forms.CheckBox
-$check_NetSharing.Text = "Habilitar Compartilhamento de Rede (Seguro)"
-$check_NetSharing.Location = New-Object System.Drawing.Point(20, 170); $check_NetSharing.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_NetSharing)
-
-$check_SleepTime = New-Object System.Windows.Forms.CheckBox
-$check_SleepTime.Text = "Ajustar Energia (1 Hora / Sem Hibernar)"
-$check_SleepTime.Location = New-Object System.Drawing.Point(20, 200); $check_SleepTime.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_SleepTime)
-
-$check_DisableUAC = New-Object System.Windows.Forms.CheckBox
-$check_DisableUAC.Text = "Desativar UAC (Requer Reinício)"
-$check_DisableUAC.Location = New-Object System.Drawing.Point(20, 230); $check_DisableUAC.Size = New-Object System.Drawing.Size(460, 20)
-$gui.Controls.Add($check_DisableUAC)
-
-$check_AdminUser = New-Object System.Windows.Forms.CheckBox
-$check_AdminUser.Text = "Habilitar Admin e definir senha:"
-$check_AdminUser.Location = New-Object System.Drawing.Point(20, 270); $check_AdminUser.Size = New-Object System.Drawing.Size(200, 20)
-$gui.Controls.Add($check_AdminUser)
-
-$text_AdminPass = New-Object System.Windows.Forms.TextBox
-$text_AdminPass.Location = New-Object System.Drawing.Point(230, 270); $text_AdminPass.Size = New-Object System.Drawing.Size(240, 20); $text_AdminPass.UseSystemPasswordChar = $true
-$gui.Controls.Add($text_AdminPass)
-
-$check_ComputerName = New-Object System.Windows.Forms.CheckBox
-$check_ComputerName.Text = "Alterar Nome do PC para:"
-$check_ComputerName.Location = New-Object System.Drawing.Point(20, 310); $check_ComputerName.Size = New-Object System.Drawing.Size(200, 20)
-$gui.Controls.Add($check_ComputerName)
-
-$text_ComputerName = New-Object System.Windows.Forms.TextBox
-$text_ComputerName.Location = New-Object System.Drawing.Point(230, 310); $text_ComputerName.Size = New-Object System.Drawing.Size(240, 20)
-$gui.Controls.Add($text_ComputerName)
-
-$executeButton = New-Object System.Windows.Forms.Button
-$executeButton.Text = "APLICAR CONFIGURAÇÕES"
-$executeButton.Location = New-Object System.Drawing.Point(100, 420)
-$executeButton.Size = New-Object System.Drawing.Size(300, 50)
-$executeButton.Font = New-Object System.Drawing.Font("Arial", 10, [System.Drawing.FontStyle]::Bold)
-$gui.Controls.Add($executeButton)
-
 
 # =================================================================
 # EXECUTION LOGIC
@@ -242,40 +176,28 @@ function Invoke-ConfigStep {
     catch { $msg = "FALHA: $Description. $($_.Exception.Message)"; Write-Warning $msg; $Global:listaDeErros.Add($msg) }
 }
 
-$executeButton.Add_Click({
-    $Global:restartNeeded = $false
-    $Global:listaDeErros = New-Object System.Collections.Generic.List[string]
-    $gui.Hide()
+$Global:listaDeErros = New-Object System.Collections.Generic.List[string]
 
-    if ($check_RestorePoint.Checked) { Invoke-ConfigStep "Criar Ponto de Restauração" { New-RestorePoint } }
-    if ($check_RDP.Checked) { Invoke-ConfigStep "Habilitar RDP" { Set-EnableRDP } }
-    if ($check_Performance.Checked) { Invoke-ConfigStep "Visual Personalizado" { Set-BestPerformance } }
-    if ($check_AutoUpdates.Checked) { Invoke-ConfigStep "Configurar Updates" { Set-AutoUpdates } }
-    if ($check_TelnetSMB.Checked) { Invoke-ConfigStep "Habilitar Telnet e SMBv1" { Enable-TelnetAndSMB } }
-    if ($check_NetSharing.Checked) { 
-        Invoke-ConfigStep "Habilitar Firewall" { Set-NetworkSharing }
-        Invoke-ConfigStep "Configurar Pasta Pública" { Set-AdvancedSharing }
-    }
-    if ($check_SleepTime.Checked) { Invoke-ConfigStep "Ajustar Energia" { Set-SleepTime } }
-    if ($check_AdminUser.Checked -and $text_AdminPass.Text -ne "") { Invoke-ConfigStep "Habilitar Admin" { Set-AdminUser $text_AdminPass.Text } }
+Invoke-ConfigStep "Habilitar RDP" { Enable-RDP }
+Invoke-ConfigStep "Visual Personalizado" { Set-BestPerformance }
+Invoke-ConfigStep "Configurar Updates" { Set-AutoUpdates }
+Invoke-ConfigStep "Habilitar Telnet e SMBv1" { Enable-TelnetAndSMB } 
+Invoke-ConfigStep "Habilitar Firewall" { Set-NetworkSharing }
+Invoke-ConfigStep "Configurar Pasta Pública" { Set-AdvancedSharing }
+Invoke-ConfigStep "Ajustar Energia" { Set-SleepTime }
+Invoke-ConfigStep "Habilitar Admin" { Enable-AdminUser }
+Invoke-ConfigStep "Desativar UAC" { Disable-UAC }
+Invoke-ConfigStep "Alterar Nome do PC" { Set-ComputerName }
+Invoke-ConfigStep "Criar Ponto de Restauração" { Create-RestorePoint }
 
-    if ($check_DisableUAC.Checked) { Invoke-ConfigStep "Desativar UAC" { Set-DisableUAC; $Global:restartNeeded = $true } }
-    if ($check_ComputerName.Checked -and $text_ComputerName.Text -ne "") { Invoke-ConfigStep "Alterar Nome do PC" { Set-ComputerName $text_ComputerName.Text; $Global:restartNeeded = $true } }
+Write-Host "---`nConfiguração concluída."
 
-    Write-Host "---`nConfiguração concluída."
-    
-    if ($Global:listaDeErros.Count -gt 0) {
-        $erros = $Global:listaDeErros -join [Environment]::NewLine
-        [System.Windows.Forms.MessageBox]::Show("Erros ocorreram:`n`n$erros", "Aviso")
-    } elseif (-not $Global:restartNeeded) {
-        [System.Windows.Forms.MessageBox]::Show("Sucesso!", "Concluído")
-    }
-    
-    if ($Global:restartNeeded) {
-        [System.Windows.Forms.MessageBox]::Show("Reiniciando em instantes...", "Reinício Necessário")
-        Restart-Computer -Force
-    }
-    $gui.Close()
-})
+if ($Global:listaDeErros.Count -gt 0) {
+	$erros = $Global:listaDeErros -join [Environment]::NewLine
+	[System.Windows.Forms.MessageBox]::Show("Erros ocorreram:`n`n$erros", "Aviso")
+} elseif (-not $Global:restartNeeded) {
+	[System.Windows.Forms.MessageBox]::Show("Sucesso!", "Concluído")
+}
 
-$gui.ShowDialog() | Out-Null
+[System.Windows.Forms.MessageBox]::Show("Reiniciando em instantes...", "Reinício Necessário")
+# Restart-Computer -Force
