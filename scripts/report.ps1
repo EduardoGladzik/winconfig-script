@@ -1,6 +1,6 @@
-function Get-SystemReport {
-    $desktopPath = [Environment]::GetFolderPath("Desktop")
-    $reportFile = "$desktopPath\Relatorio_$($env:COMPUTERNAME).txt"
+﻿function Get-SystemReport {
+	$rootFolder = Split-Path -Parent $PSScriptRoot
+    $reportFile = Join-Path $rootFolder "relatorio.txt"
 
     Write-Host "Coletando informações do sistema..." -ForegroundColor Cyan
 
@@ -8,7 +8,7 @@ function Get-SystemReport {
     $sysInfo = Get-ComputerInfo
     $output = @()
     $output += "========================================================"
-    $output += " RELATORIO DE INFORMAÇÕES - $($env:COMPUTERNAME)"
+    $output += " RELATÓRIO DE INFORMAÇÕES - $($env:COMPUTERNAME)"
     $output += " Data: $(Get-Date)"
     $output += "========================================================"
     $output += ""
@@ -33,7 +33,7 @@ function Get-SystemReport {
         $groups = (Get-WmiObject Win32_GroupUser | Where-Object { $_.PartComponent -match "Name=`"$($u.Name)`"" }).GroupComponent
         if ($groups -match "Administrators" -or $groups -match "Administradores") { $isAdmin = "SIM" }
 
-        $output += "Usuario:  $($u.Name)"
+        $output += "Usuário:  $($u.Name)"
         $output += "Admin:    $isAdmin"
         $output += "Status:   Ativo"
         $output += ""
