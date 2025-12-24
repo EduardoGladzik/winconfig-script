@@ -1,2 +1,13 @@
 password.txt
 password/
+
+# Dependencies
+libs/*
+!libs/.gitkeep
+
+#Chrome Installer
+googlechrome.msi
+
+# Adobe reader install folder
+AdobeReader/*
+!AdobeReader/.gitkeep
