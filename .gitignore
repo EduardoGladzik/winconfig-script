@@ -2,12 +2,12 @@ password.txt
 password/
 
 # Dependencies
-libs/*
-!libs/.gitkeep
+winget/libs/*
+!winget/libs/.gitkeep
 
 #Chrome Installer
-googlechrome.msi
+winget/offline/googlechrome.msi
 
 # Adobe reader install folder
-AdobeReader/*
-!AdobeReader/.gitkeep
+winget/offline/AdobeReader/*
+!winget/offline/AdobeReader/*.gitkeep
