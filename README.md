@@ -18,6 +18,8 @@ Some dependencies need to be installed for the script to work.
   - Microsoft.VCLibs.x64.14.00.Desktop.appx
 
 - Offline installers:
-  - Chrome .msi installer: googlechrome.msi > move to winget/offline
+  - Chrome .msi installer: googlechromestandaloneenterprise64.msi
+    - Rename the file to "googlechrome.msi" and move it to winget/offline
+
   - Adobe Acrobat Reader installer: https://helpx.adobe.com/br/acrobat/kb/download-64-bit-installer.html
     - Download the zip folder and extract the files to winget/offline/AdobeReader
